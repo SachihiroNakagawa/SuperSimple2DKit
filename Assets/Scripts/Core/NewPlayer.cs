@@ -10,6 +10,7 @@ using UnityEngine.SceneManagement;
 public class NewPlayer : PhysicsObject
 {
     [Header ("Reference")]
+    public Joystick joystick;
     public AudioSource audioSource;
     [SerializeField] private Animator animator;
     private AnimatorFunctions animatorFunctions;
@@ -23,6 +24,8 @@ public class NewPlayer : PhysicsObject
     [SerializeField] private ParticleSystem jumpParticles;
     [SerializeField] private GameObject pauseMenu;
     public RecoveryCounter recoveryCounter;
+    public GameObject jumpButton;
+    private ButtonFunctions jumpInput;
 
     // Singleton instantiation
     private static NewPlayer instance;
@@ -53,6 +56,7 @@ public class NewPlayer : PhysicsObject
     [System.NonSerialized] public bool pounded;
     [System.NonSerialized] public bool pounding;
     [System.NonSerialized] public bool shooting = false;
+    private bool attacking = false;
 
     [Header ("Inventory")]
     public float ammo;
@@ -79,13 +83,14 @@ public class NewPlayer : PhysicsObject
 
     void Start()
     {
-        Cursor.visible = false;
+        //Cursor.visible = false;
         SetUpCheatItems();
         health = maxHealth;
         animatorFunctions = GetComponent<AnimatorFunctions>();
         origLocalScale = transform.localScale;
         recoveryCounter = GetComponent<RecoveryCounter>();
-        
+        jumpInput = jumpButton.GetComponent<ButtonFunctions>();
+
         //Find all sprites so we can hide them when the player dies.
         graphicSprites = GetComponentsInChildren<SpriteRenderer>();
 
@@ -114,9 +119,11 @@ public class NewPlayer : PhysicsObject
         //Movement, jumping, and attacking!
         if (!frozen)
         {
-            move.x = Input.GetAxis("Horizontal") + launch;
+            //move.x = Input.GetAxis("Horizontal") + launch;
+            move.x = joystick.Horizontal + launch;
 
-            if (Input.GetButtonDown("Jump") && animator.GetBool("grounded") == true && !jumping)
+            //if (Input.GetButtonDown("Jump") && animator.GetBool("grounded") == true && !jumping)
+            if (jumpInput.isButtonOn && animator.GetBool("grounded") == true && !jumping)
             {
                 animator.SetBool("pounded", false);
                 Jump(1f);
@@ -133,8 +140,9 @@ public class NewPlayer : PhysicsObject
             }
 
             //Punch
-            if (Input.GetMouseButtonDown(0))
+            if (attacking)//Input.GetMouseButtonDown(0))
             {
+                attacking = false;
                 animator.SetTrigger("attack");
                 Shoot(false);
             }
@@ -175,8 +183,8 @@ public class NewPlayer : PhysicsObject
             //Set each animator float, bool, and trigger to it knows which animation to fire
             animator.SetFloat("velocityX", Mathf.Abs(velocity.x) / maxSpeed);
             animator.SetFloat("velocityY", velocity.y);
-            animator.SetInteger("attackDirectionY", (int)Input.GetAxis("VerticalDirection"));
-            animator.SetInteger("moveDirection", (int)Input.GetAxis("HorizontalDirection"));
+            animator.SetInteger("attackDirectionY", (int)joystick.Vertical * 100);//Input.GetAxis("VerticalDirection"));
+            animator.SetInteger("moveDirection", (int)joystick.Horizontal * 100);//(int)Input.GetAxis("HorizontalDirection"));
             animator.SetBool("hasChair", GameManager.Instance.inventory.ContainsKey("chair"));
             targetVelocity = move * maxSpeed;
 
@@ -317,7 +325,7 @@ public class NewPlayer : PhysicsObject
     {
         //Play a step sound at a random pitch between two floats, while also increasing the volume based on the Horizontal axis
         audioSource.pitch = (Random.Range(0.9f, 1.1f));
-        audioSource.PlayOneShot(stepSound, Mathf.Abs(Input.GetAxis("Horizontal") / 10));
+        audioSource.PlayOneShot(stepSound, Mathf.Abs(joystick.Horizontal / 10));//Input.GetAxis("Horizontal") / 10));
     }
 
     public void PlayJumpSound()
@@ -432,5 +440,15 @@ public class NewPlayer : PhysicsObject
         {
             GameManager.Instance.GetInventoryItem(cheatItems[i], null);
         }
+    }
+
+    public void AttackButton()
+    {
+        attacking = true;
+    }
+
+    public void JumpButton()
+    {
+
     }
 }
